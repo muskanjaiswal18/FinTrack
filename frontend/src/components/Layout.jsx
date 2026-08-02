@@ -25,7 +25,7 @@ import {
 import axios from "axios";
 import { Outlet } from "react-router-dom";
 
-const API_BASE = "http://localhost:4000/api";
+const API_BASE = "https://fintrack-frontend-zpje.onrender.com/api";
 const CATEGORY_ICONS = {
   Food: <Utensils className="w-4 h-4" />,
   Housing: <Home className="w-4 h-4" />,
