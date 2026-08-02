@@ -30,8 +30,7 @@ import { getTimeFrameRange, generateChartPoints } from "../components/Helpers";
 import { CATEGORY_ICONS } from "../assets/color";
 import { expensePageStyles as styles } from "../assets/dummyStyles";
 
-const API_BASE = "https://fintrack-frontend-zpje.onrender.com/api";
-
+import { API_BASE } from "../config";
 /**
  * Helper: convert date (or datetime) to ISO by attaching client current time
  * - If `dateValue` is "YYYY-MM-DD" (length 10) => attach current HH:MM:SS

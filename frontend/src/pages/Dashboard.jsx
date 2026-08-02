@@ -43,8 +43,7 @@ import {
   Tooltip,
 } from "recharts";
 import AddTransactionModal from "../components/Add";
-
-const API_BASE = "https://fintrack-frontend-zpje.onrender.com/api";
+import { API_BASE } from "../config";
 
 const getAuthHeader = () => {
   const token =

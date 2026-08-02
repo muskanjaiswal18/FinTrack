@@ -24,8 +24,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import { Outlet } from "react-router-dom";
-
-const API_BASE = "https://fintrack-frontend-zpje.onrender.com/api";
+import { API_BASE } from "../config";
 const CATEGORY_ICONS = {
   Food: <Utensils className="w-4 h-4" />,
   Housing: <Home className="w-4 h-4" />,

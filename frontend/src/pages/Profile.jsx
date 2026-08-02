@@ -5,8 +5,7 @@ import { Eye, EyeOff, Lock, User, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
-
-const BASE_URL = "https://fintrack-frontend-zpje.onrender.com/api";
+import { API_BASE as BASE_URL } from "../config";
 
 Modal.setAppElement("#root");
 // Move PasswordInput component outside of ProfilePage to prevent recreation on every render

@@ -14,8 +14,9 @@ import axios from "axios";
 import Income from "./pages/Income";
 import Expense from "./pages/Expense";
 import Profile from "./pages/Profile";
+import { API_URL } from "./config";
 
-const API_URL = "https://fintrack-frontend-zpje.onrender.com";
+// `API_URL` is provided by `src/config.js`
 
 // to get transaction from localstorage
 const getTransactionsFromStorage = () => {
