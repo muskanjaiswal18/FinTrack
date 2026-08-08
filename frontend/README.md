@@ -1,6 +1,8 @@
-# React + Vite
+# FinTrack
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A full-stack personal finance tracker built with the MERN stack (MongoDB, Express, React, Node.js).
+
+This project uses [Vite](https://vite.dev) for the frontend build tooling.
 
 Currently, two official plugins are available:
 
