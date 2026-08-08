@@ -204,6 +204,17 @@ const Dashboard = () => {
     return data;
   }, [filteredTransactions]);
 
+  // "Total Balance" is meant to be the running all-time balance, not
+  // scoped to the Daily/Weekly/Monthly selector — it was previously
+  // bound to the time-frame-filtered totals, so switching to "Daily"
+  // (or any period with no activity) incorrectly showed $0 even when
+  // real transactions existed. Computed here from the full unfiltered
+  // transaction list using the same calculateData helper.
+  const allTimeData = useMemo(
+    () => calculateData(outletTransactions || []),
+    [outletTransactions],
+  );
+
   const prevTimeFrameData = useMemo(() => {
     const data = calculateData(prevFilteredTransactions);
     data.savings = data.income - data.expenses;
@@ -509,14 +520,14 @@ const Dashboard = () => {
             </div>
           }
           label="Total Balance"
-          value={`$${Math.round(displayIncome - displayExpenses).toLocaleString()}`}
+          value={`$${Math.round(allTimeData.income - allTimeData.expenses).toLocaleString()}`}
           additionalContent={
             <div className=" flex items-center gap-2 mt-2 text-sm">
               <span className={dashboardStyles.balanceBadge}>
-                +${Math.round(displayIncome).toLocaleString()}
+                +${Math.round(allTimeData.income).toLocaleString()}
               </span>
               <span className={dashboardStyles.expenseBadge}>
-                -${Math.round(displayExpenses).toLocaleString()}
+                -${Math.round(allTimeData.expenses).toLocaleString()}
               </span>
             </div>
           }
@@ -845,4 +856,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default Dashboard;s
