@@ -132,7 +132,7 @@ const Signup = ({ onSignup }) => {
           </div>
           <h1 className={signupStyles.headerTitle}>Create Account</h1>
           <p className={signupStyles.headerSubtitle}>
-            Join ExpenseTracker to manage your finances
+            Join FinTrack to manage your finances
           </p>
         </div>
 
