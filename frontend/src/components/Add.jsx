@@ -11,7 +11,12 @@ const AddTransactionModal = ({
   type = "both",
   title = "Add New Transaction",
   buttonText = "Add Transaction",
-  categories = [
+  categories,
+  color = "teal",
+}) => {
+  if (!showModal) return null;
+
+  const EXPENSE_CATEGORIES = [
     "Food",
     "Housing",
     "Transport",
@@ -19,15 +24,27 @@ const AddTransactionModal = ({
     "Entertainment",
     "Utilities",
     "Healthcare",
+    "Other",
+  ];
+  const INCOME_CATEGORIES = [
     "Salary",
     "Freelance",
     "Investments",
     "Bonus",
     "Other",
-  ],
-  color = "teal",
-}) => {
-  if (!showModal) return null;
+  ];
+
+  // When the caller passes an explicit `categories` list (Income.jsx and
+  // Expense.jsx both do this) we respect it as-is. Only the shared "both"
+  // modal (used by Dashboard.jsx) needs to switch lists based on the
+  // currently selected type, since it previously offered a merged list
+  // that let an income entry get saved with an expense-only category
+  // (or vice versa).
+  const resolvedCategories =
+    categories ||
+    (newTransaction.type === "income"
+      ? INCOME_CATEGORIES
+      : EXPENSE_CATEGORIES);
 
   // Get current date in YYYY-MM-DD format
   const today = new Date();
@@ -106,7 +123,18 @@ const AddTransactionModal = ({
                       modalStyles.colorClasses.teal.typeButtonSelected,
                     )}
                     onClick={() =>
-                      setNewTransaction((prev) => ({ ...prev, type: "income" }))
+                      setNewTransaction((prev) =>
+                        prev.type === "income"
+                          ? prev
+                          : {
+                              ...prev,
+                              type: "income",
+                              // Reset category so it can't stay on an
+                              // expense-only category (e.g. "Food") when
+                              // switching to Income.
+                              category: "Salary",
+                            },
+                      )
                     }
                   >
                     Income
@@ -118,10 +146,18 @@ const AddTransactionModal = ({
                       modalStyles.colorClasses.orange.typeButtonSelected,
                     )}
                     onClick={() =>
-                      setNewTransaction((prev) => ({
-                        ...prev,
-                        type: "expense",
-                      }))
+                      setNewTransaction((prev) =>
+                        prev.type === "expense"
+                          ? prev
+                          : {
+                              ...prev,
+                              type: "expense",
+                              // Reset category so it can't stay on an
+                              // income-only category (e.g. "Salary") when
+                              // switching to Expense.
+                              category: "Food",
+                            },
+                      )
                     }
                   >
                     Expense
@@ -142,7 +178,7 @@ const AddTransactionModal = ({
                 }
                 className={modalStyles.input(colorClass.ring)}
               >
-                {categories.map((cat) => (
+                {resolvedCategories.map((cat) => (
                   <option value={cat} key={cat}>
                     {cat}
                   </option>
