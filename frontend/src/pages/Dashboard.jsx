@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   dashboardStyles,
   trendStyles,
@@ -47,8 +48,8 @@ import { API_BASE } from "../config";
 
 const getAuthHeader = () => {
   const token =
-    localStorage.getItem("token") || sessionStorage.getItem("token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+    localStorage.getItem("token") || localStorage.getItem("authToken");
+  return token ? { Authorization: `Bearer ${token} ` } : {};
 };
 
 // to convert date to ISO timeline
@@ -71,6 +72,64 @@ function toIsoWithClientTime(dateValue) {
   }
 }
 
+// Recharts' default pie label placement puts every label at the same
+// fixed radius right at the slice edge with no spacing logic, so labels
+// from adjacent (especially small) slices overlap each other. This
+// custom renderer pushes labels outward along their slice's angle and
+// draws a connector line back to the slice, which is the standard fix
+// for label collisions in Recharts pie charts. Slices below 5% are
+// skipped (the Legend below the chart still lists them) since there
+// isn't enough angular room to place readable text without it running
+// into its neighbors regardless of offset.
+const PIE_LABEL_MIN_PERCENT = 0.05;
+
+const renderPieLabel = (props) => {
+  const { cx, cy, midAngle, outerRadius, percent, name } = props;
+  if (percent < PIE_LABEL_MIN_PERCENT) return null;
+
+  const RADIAN = Math.PI / 180;
+  const radius = outerRadius + 22;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  const textAnchor = x > cx ? "start" : "end";
+
+  return (
+    <text
+      x={x}
+      y={y}
+      textAnchor={textAnchor}
+      dominantBaseline="central"
+      className="text-xs fill-gray-600"
+    >
+      {`${name}: ${Math.round(percent * 100)}%`}
+    </text>
+  );
+};
+
+const renderPieLabelLine = (props) => {
+  const { cx, cy, midAngle, outerRadius, percent } = props;
+  if (percent < PIE_LABEL_MIN_PERCENT) return null;
+
+  const RADIAN = Math.PI / 180;
+  const innerPoint = {
+    x: cx + outerRadius * Math.cos(-midAngle * RADIAN),
+    y: cy + outerRadius * Math.sin(-midAngle * RADIAN),
+  };
+  const outerPoint = {
+    x: cx + (outerRadius + 14) * Math.cos(-midAngle * RADIAN),
+    y: cy + (outerRadius + 14) * Math.sin(-midAngle * RADIAN),
+  };
+
+  return (
+    <path
+      d={`M${innerPoint.x},${innerPoint.y}L${outerPoint.x},${outerPoint.y}`}
+      stroke="#9ca3af"
+      strokeWidth={1}
+      fill="none"
+    />
+  );
+};
+
 const Dashboard = () => {
   //get refreshTransactions from the outlet context
   const {
@@ -81,11 +140,17 @@ const Dashboard = () => {
   } = useOutletContext();
 
   const [showModal, setShowModal] = useState(false);
-  const [gaugeData, setGaugeData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [overviewMeta, setOverviewMeta] = useState({});
+  const [dashboardError, setDashboardError] = useState(null);
   const [showAllIncome, setShowAllIncome] = useState(false); //to toggle
   const [showAllExpense, setShowAllExpense] = useState(false);
+
+  // Guards against out-of-order responses: only the most recently
+  // *fired* dashboard-overview request is allowed to update state.
+  // Without this, a slower earlier request can resolve after a newer
+  // one and silently overwrite fresh data with stale/zeroed values.
+  const overviewRequestId = useRef(0);
 
   const [newTransaction, setNewTransaction] = useState({
     date: new Date().toISOString().split("T")[0],
@@ -145,33 +210,6 @@ const Dashboard = () => {
     data.savings = data.income - data.expenses;
     return data;
   }, [prevFilteredTransactions]);
-
-  //update the gauge when time frame changes
-  useEffect(() => {
-    const maxValues = {
-      income: Math.max(currentTimeFrameData.income, 5000),
-      expenses: Math.max(currentTimeFrameData.expenses, 3000),
-      savings: Math.max(Math.abs(currentTimeFrameData.savings), 2000),
-    };
-
-    setGaugeData([
-      {
-        name: "Income",
-        value: currentTimeFrameData.income,
-        max: maxValues.income,
-      },
-      {
-        name: "Spent",
-        value: currentTimeFrameData.expenses,
-        max: maxValues.expenses,
-      },
-      {
-        name: "Savings",
-        value: currentTimeFrameData.savings,
-        max: maxValues.savings,
-      },
-    ]);
-  }, [currentTimeFrameData, timeFrame]); //the graph will be fill according to this data.
 
   const displayIncome =
     timeFrame === "monthly" && typeof overviewMeta.monthlyIncome === "number"
@@ -272,11 +310,20 @@ const Dashboard = () => {
 
   // fetch the server-side data
   const fetchDashboardOverview = async () => {
+    // Stamp this call with a unique, increasing id. Only the response
+    // matching the *latest* id is allowed to update state, so a slower
+    // older request can never clobber a newer one.
+    const requestId = ++overviewRequestId.current;
+
     try {
       setLoading(true);
+      setDashboardError(null);
       const res = await axios.get(`${API_BASE}/dashboard`, {
         headers: getAuthHeader(),
       });
+
+      // A newer request has since been fired — discard this stale result.
+      if (requestId !== overviewRequestId.current) return;
 
       if (res?.data?.success) {
         const data = res.data.data;
@@ -326,43 +373,44 @@ const Dashboard = () => {
           expenseDistribution: data.expenseDistribution || [],
           recentTransactions: recent,
         }));
-
-        if (timeFrame === "monthly") {
-          const monthlyIncome = Number(data.monthlyIncome || 0);
-          const monthlyExpense = Number(data.monthlyExpense || 0);
-          const savings =
-            typeof data.savings !== "undefined"
-              ? Number(data.savings)
-              : monthlyIncome - monthlyExpense;
-
-          const maxValues = {
-            income: Math.max(monthlyIncome, 5000),
-            expenses: Math.max(monthlyExpense, 3000),
-            savings: Math.max(Math.abs(savings), 2000),
-          };
-
-          setGaugeData([
-            { name: "Income", value: monthlyIncome, max: maxValues.income },
-            { name: "Spent", value: monthlyExpense, max: maxValues.expenses },
-            { name: "Savings", value: savings, max: maxValues.savings },
-          ]);
-        }
       } else {
         console.warn("Dashboard endpoint returned success:false", res?.data);
+        setDashboardError("Could not load dashboard data. Please refresh.");
       }
     } catch (err) {
+      if (requestId !== overviewRequestId.current) return;
       console.error(
         "Failed to fetch dashboard overview:",
         err?.response || err.message || err,
       );
+      setDashboardError(
+        "Could not load dashboard data. Please check your connection and refresh.",
+      );
     } finally {
-      setLoading(false);
+      if (requestId === overviewRequestId.current) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchDashboardOverview();
   }, []);
+
+  // Single source of truth for the gauges: derived directly from the same
+  // displayIncome/displayExpenses/displaySavings values the summary cards
+  // use, so gauges and cards can never disagree or race against each other.
+  const gaugeData = useMemo(() => {
+    const maxValues = {
+      income: Math.max(displayIncome, 5000),
+      expenses: Math.max(displayExpenses, 3000),
+      savings: Math.max(Math.abs(displaySavings), 2000),
+    };
+
+    return [
+      { name: "Income", value: displayIncome, max: maxValues.income },
+      { name: "Spent", value: displayExpenses, max: maxValues.expenses },
+      { name: "Savings", value: displaySavings, max: maxValues.savings },
+    ];
+  }, [displayIncome, displayExpenses, displaySavings]);
 
   // add/ edit or //delete
   const handleAddTransaction = async () => {
@@ -417,6 +465,18 @@ const Dashboard = () => {
             <p className={dashboardStyles.headerSubtitle}>
               Track your income and expenses
             </p>
+            {dashboardError && (
+              <p className="text-sm text-red-500 mt-1">
+                {dashboardError}{" "}
+                <button
+                  type="button"
+                  onClick={fetchDashboardOverview}
+                  className="underline"
+                >
+                  Retry
+                </button>
+              </p>
+            )}
           </div>
           <button
             onClick={() => setShowModal(true)}
@@ -543,248 +603,4 @@ const Dashboard = () => {
       <div className={dashboardStyles.pieChartContainer}>
         <div className={dashboardStyles.pieChartHeader}>
           <h3 className={dashboardStyles.pieChartTitle}>
-            <PieChartIcon className="w-6 h-6 text-teal-500" />
-            Expense Distribution
-            <span className={dashboardStyles.listSubtitle}>
-              {" "}
-              ({timeFrameRange.label})
-            </span>
-          </h3>
-        </div>
-
-        <div className={dashboardStyles.pieChartHeight}>
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart className={chartStyles.pieChart}>
-              <Pie
-                data={financialOverviewData}
-                cx="50%"
-                cy="50%"
-                innerRadius={70}
-                outerRadius={110}
-                paddingAngle={2}
-                dataKey="value"
-                label={({ name, percent }) =>
-                  `${name}: ${Math.round(percent * 100)}%`
-                }
-                labelLine={false}
-              >
-                {financialOverviewData.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={COLORS[index % COLORS.length]}
-                    stroke="#fff"
-                    strokeWidth={2}
-                  />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value) => [
-                  `$${Math.round(value).toLocaleString()}`,
-                  "Amount",
-                ]}
-                contentStyle={dashboardStyles.tooltipContent}
-                itemStyle={dashboardStyles.tooltipItem}
-              />
-              <Legend
-                layout="horizontal"
-                verticalAlign="bottom"
-                align="center"
-                formatter={(v) => (
-                  <span className={dashboardStyles.legendText}>{v}</span>
-                )}
-                iconSize={10}
-                iconType="circle"
-                wrapperStyle={dashboardStyles.legendWrapper}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      <div className={dashboardStyles.listsGrid}>
-        {/* Income Column */}
-        <div className={dashboardStyles.listContainer}>
-          <div className={dashboardStyles.listHeader}>
-            <h3 className={dashboardStyles.listTitle}>
-              <ProfitIcon className="w-6 h-6 text-green-500" /> Recent Income{" "}
-              <span className={dashboardStyles.listSubtitle}>
-                {" "}
-                ({timeFrameRange.label})
-              </span>
-            </h3>
-            <span className={dashboardStyles.incomeCountBadge}>
-              {incomeListForDisplay.length} records
-            </span>
-          </div>
-
-          <div className={dashboardStyles.transactionList}>
-            {displayedIncome.map((transaction) => {
-              const IconComponent =
-                INCOME_CATEGORY_ICONS[transaction.category] ||
-                INCOME_CATEGORY_ICONS.Other;
-              return (
-                <div
-                  key={transaction.id}
-                  className={dashboardStyles.incomeTransactionItem}
-                >
-                  <div className={dashboardStyles.transactionContent}>
-                    <div className={dashboardStyles.incomeIconContainer}>
-                      {IconComponent}
-                    </div>
-                    <div>
-                      <p className={dashboardStyles.transactionDescription}>
-                        {transaction.description}
-                      </p>
-                      <p className={dashboardStyles.transactionCategory}>
-                        {transaction.category}
-                      </p>
-                    </div>
-                  </div>
-                  <div className={dashboardStyles.transactionAmount}>
-                    <p className={dashboardStyles.incomeAmount}>
-                      +${Math.abs(transaction.amount).toLocaleString()}
-                    </p>
-                    <p className={dashboardStyles.transactionDate}>
-                      {new Date(transaction.date).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-
-            {incomeListForDisplay.length === 0 && (
-              <div className={dashboardStyles.emptyState}>
-                <div
-                  className={dashboardStyles.emptyIconContainer("bg-green-50")}
-                >
-                  <DollarSign className="w-8 h-8 text-green-400" />
-                </div>
-                <p className={dashboardStyles.emptyText}>
-                  No income transactions
-                </p>
-              </div>
-            )}
-
-            {incomeListForDisplay.length > 3 && (
-              <div className={dashboardStyles.viewAllContainer}>
-                <button
-                  onClick={() => setShowAllIncome(!showAllIncome)}
-                  className={dashboardStyles.viewAllButton}
-                >
-                  {showAllIncome ? (
-                    <>
-                      <ChevronUp className="w-5 h-5" />
-                      Show Less
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown className="w-5 h-5" />
-                      View All Income ({incomeListForDisplay.length})
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Expense Column */}
-        <div className={dashboardStyles.listContainer}>
-          <div className={dashboardStyles.listHeader}>
-            <h3 className="text-lg md:text-xl lg:text-xl xl:text-xl font-bold text-gray-800 md:mt-3 mt-3 flex items-center gap-3">
-              <ArrowDown className="w-6 h-6 text-orange-500" /> Recent Expenses{" "}
-              <span className={dashboardStyles.listSubtitle}>
-                {" "}
-                ({timeFrameRange.label})
-              </span>
-            </h3>
-            <span className={dashboardStyles.expenseCountBadge}>
-              {expenseListForDisplay.length} records
-            </span>
-          </div>
-
-          <div className={dashboardStyles.transactionList}>
-            {displayedExpense.map((transaction) => {
-              const IconComponent =
-                EXPENSE_CATEGORY_ICONS[transaction.category] ||
-                EXPENSE_CATEGORY_ICONS.Other;
-              return (
-                <div
-                  key={transaction.id}
-                  className={dashboardStyles.expenseTransactionItem}
-                >
-                  <div className={dashboardStyles.transactionContent}>
-                    <div className={dashboardStyles.expenseIconContainer}>
-                      {IconComponent}
-                    </div>
-                    <div>
-                      <p className={dashboardStyles.transactionDescription}>
-                        {transaction.description}
-                      </p>
-                      <p className={dashboardStyles.transactionCategory}>
-                        {transaction.category}
-                      </p>
-                    </div>
-                  </div>
-                  <div className={dashboardStyles.transactionAmount}>
-                    <p className={dashboardStyles.expenseAmount}>
-                      -${Math.abs(transaction.amount).toLocaleString()}
-                    </p>
-                    <p className={dashboardStyles.transactionDate}>
-                      {new Date(transaction.date).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-
-            {expenseListForDisplay.length === 0 && (
-              <div className={dashboardStyles.emptyState}>
-                <div
-                  className={dashboardStyles.emptyIconContainer("bg-orange-50")}
-                >
-                  <ShoppingCart className="w-8 h-8 text-orange-400" />
-                </div>
-                <p className={dashboardStyles.emptyText}>
-                  No expense transactions
-                </p>
-              </div>
-            )}
-
-            {expenseListForDisplay.length > 3 && (
-              <div className={dashboardStyles.viewAllContainer}>
-                <button
-                  onClick={() => setShowAllExpense(!showAllExpense)}
-                  className={dashboardStyles.viewAllButton}
-                >
-                  {showAllExpense ? (
-                    <>
-                      <ChevronUp className="w-5 h-5" />
-                      Show Less
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown className="w-5 h-5" />
-                      View All Expenses ({expenseListForDisplay.length})
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <AddTransactionModal
-        showModal={showModal}
-        setShowModal={setShowModal}
-        newTransaction={newTransaction}
-        setNewTransaction={setNewTransaction}
-        handleAddTransaction={handleAddTransaction}
-        loading={loading}
-      />
-    </div>
-  );
-};
-
-export default Dashboard;
+            <PieChartIcon className="w-6 h-6 text
