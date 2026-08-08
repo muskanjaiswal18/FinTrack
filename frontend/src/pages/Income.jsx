@@ -167,6 +167,17 @@ const FilterSection = ({ filter, setFilter, handleExport }) => (
   </div>
 ); //added for filtering the data
 
+// toISOString() converts to UTC first, so for any timezone ahead of UTC
+// (e.g. IST, UTC+5:30) using it to default a date field could silently
+// return YESTERDAY's date for several hours after local midnight — which
+// then makes a transaction added "today" fall outside today's/this
+// week's filtered view. This returns the date on the user's own clock.
+const getLocalDateString = () => {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
 const Income = () => {
   const {
     transactions: outletTransactions = [],
@@ -188,7 +199,7 @@ const Income = () => {
     range: "monthly",
   });
   const [newTransaction, setNewTransaction] = useState({
-    date: new Date().toISOString().split("T")[0],
+    date: getLocalDateString(),
     description: "",
     amount: "",
     type: "income",
@@ -198,12 +209,12 @@ const Income = () => {
     description: "",
     amount: "",
     category: "Salary",
-    date: new Date().toISOString().split("T")[0],
+    date: getLocalDateString(),
   });
 
   //to get the token from localstorage
   const getAuthHeaders = useCallback(() => {
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    const token = localStorage.getItem("token");
     return token ? { Authorization: `Bearer ${token}` } : {};
   }, []);
 
@@ -366,7 +377,7 @@ const Income = () => {
       await fetchOverview(timeFrame ?? "monthly");
 
       setNewTransaction({
-        date: new Date().toISOString().split("T")[0],
+        date: getLocalDateString(),
         description: "",
         amount: "",
         type: "income",
@@ -669,7 +680,7 @@ const Income = () => {
         type="income"
         title="Add New Income"
         buttonText="Add Income"
-        categories={["Salary", "Freelance", "Investment", "Bonus", "Other"]}
+        categories={["Salary", "Bonus", "Freelance", "Investments", "Other"]}
         color="teal"
       />
     </div>

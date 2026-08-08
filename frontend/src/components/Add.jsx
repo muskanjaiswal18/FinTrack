@@ -28,9 +28,9 @@ const AddTransactionModal = ({
   ];
   const INCOME_CATEGORIES = [
     "Salary",
+    "Bonus",
     "Freelance",
     "Investments",
-    "Bonus",
     "Other",
   ];
 
@@ -49,7 +49,13 @@ const AddTransactionModal = ({
   // Get current date in YYYY-MM-DD format
   const today = new Date();
   const currentYear = today.getFullYear();
-  const currentDate = today.toISOString().split("T")[0];
+  // NOTE: toISOString() converts to UTC first, so for any timezone ahead
+  // of UTC (e.g. IST, UTC+5:30) this could silently return YESTERDAY's
+  // date for several hours after local midnight. Using local date parts
+  // instead guarantees this always matches the date on the user's own
+  // clock.
+  const pad = (n) => String(n).padStart(2, "0");
+  const currentDate = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
   const minDate = `${currentYear}-01-01`;
 
   const colorClass = modalStyles.colorClasses[color];
