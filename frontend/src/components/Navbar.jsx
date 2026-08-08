@@ -20,8 +20,7 @@ const Navbar = ({ user: propUser, onLogout }) => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const token =
-          localStorage.getItem("token") || sessionStorage.getItem("token");
+        const token = localStorage.getItem("token");
         if (!token) return;
 
         const response = await axios.get(`${BASE_URL}/user/me`, {
@@ -71,7 +70,7 @@ const Navbar = ({ user: propUser, onLogout }) => {
           <div className={navbarStyles.logoImage}>
             <img src={img1} alt="logo" />
           </div>
-          <span className={navbarStyles.logoText}>Expense Tracker</span>
+          <span className={navbarStyles.logoText}>FinTrack</span>
         </div>
 
         {/* if the user is present */}
@@ -87,7 +86,7 @@ const Navbar = ({ user: propUser, onLogout }) => {
               <div className={navbarStyles.userTextContainer}>
                 <p className={navbarStyles.userName}>{user?.name || "User"}</p>
                 <p className={navbarStyles.userEmail}>
-                  {user?.email || "user@expensetracker.com"}
+                  {user?.email || "user@fintrack.com"}
                 </p>
               </div>
 
@@ -108,7 +107,7 @@ const Navbar = ({ user: propUser, onLogout }) => {
                         {user?.name || "User"}
                       </div>
                       <div className={navbarStyles.dropdownEmail}>
-                        {user?.email || "user@expensetracker.com"}
+                        {user?.email || "user@fintrack.com"}
                       </div>
                     </div>
                   </div>
