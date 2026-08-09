@@ -11,7 +11,7 @@ export const dashboardStyles = {
   headerSubtitle: "text-gray-600 mt-2",
   
   // Button styles
-  addButton: "flex items-center gap-2 bg-teal-500 hover:bg-teal-600 text-white px-5 py-3 rounded-xl transition-all shadow hover:shadow-md font-medium",
+  addButton: "flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-5 py-3 rounded-xl transition-all shadow hover:shadow-md font-medium",
   
   // Time frame selector styles
   timeFrameContainer: "flex justify-end mt-4",

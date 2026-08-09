@@ -129,16 +129,18 @@ const renderPieLabelLine = (props) => {
   );
 };
 
-// toISOString() converts to UTC first, so for any timezone ahead of UTC
-// (e.g. IST, UTC+5:30) using it to default a date field could silently
-// return YESTERDAY's date for several hours after local midnight — which
-// then makes a transaction added "today" fall outside today's/this
-// week's filtered view. This returns the date on the user's own clock.
-const getLocalDateString = () => {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
+// Dedicated palette for the Expense Distribution chart — reds and
+// oranges to match the app's existing expense theming (the Spent gauge
+// and expense category icons already use orange/red tones).
+const EXPENSE_PIE_COLORS = [
+  "#ef4444", // red-500
+  "#f97316", // orange-500
+  "#dc2626", // red-600
+  "#fb923c", // orange-400
+  "#b91c1c", // red-700
+  "#fdba74", // orange-300
+  "#f87171", // red-400
+];
 
 const Dashboard = () => {
   //get refreshTransactions from the outlet context
@@ -163,7 +165,7 @@ const Dashboard = () => {
   const overviewRequestId = useRef(0);
 
   const [newTransaction, setNewTransaction] = useState({
-    date: getLocalDateString(),
+    date: new Date().toISOString().split("T")[0],
     description: "",
     amount: "",
     type: "expense", //or income
@@ -459,7 +461,7 @@ const Dashboard = () => {
       await fetchDashboardOverview();
 
       setNewTransaction({
-        date: getLocalDateString(),
+        date: new Date().toISOString().split("T")[0],
         description: "",
         amount: "",
         type: "expense",
@@ -651,7 +653,7 @@ const Dashboard = () => {
                 {financialOverviewData.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
-                    fill={COLORS[index % COLORS.length]}
+                    fill={EXPENSE_PIE_COLORS[index % EXPENSE_PIE_COLORS.length]}
                     stroke="#fff"
                     strokeWidth={2}
                   />
