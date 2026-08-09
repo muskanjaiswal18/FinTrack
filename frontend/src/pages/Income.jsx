@@ -326,13 +326,20 @@ const Income = () => {
     fetchOverview(timeFrame ?? "monthly");
   }, [fetchOverview, timeFrame]);
 
+  // FIX: was `overview.totalIncome ?? filteredTransactions.reduce(...)`.
+  // `??` only falls back on null/undefined, but overview.totalIncome
+  // starts at 0 (a real number) — so `0 ?? X` always evaluated to 0 and
+  // never fell back to the correct client-computed value, even when the
+  // server hadn't returned fresh data yet. Changed to a truthy check
+  // (matching how averageIncome already correctly does it below).
   const totalIncome = useMemo(
     () =>
-      overview.totalIncome ??
-      filteredTransactions.reduce(
-        (sum, t) => sum + Math.round(Number(t.amount || 0)),
-        0,
-      ),
+      overview.totalIncome
+        ? overview.totalIncome
+        : filteredTransactions.reduce(
+            (sum, t) => sum + Math.round(Number(t.amount || 0)),
+            0,
+          ),
     [overview.totalIncome, filteredTransactions],
   );
 
@@ -351,8 +358,10 @@ const Income = () => {
     [overview.averageIncome, filteredTransactions],
   ); //use backend overview if available
 
+  // Same fix as totalIncome above: was `??`, which never fell back to
+  // filteredTransactions.length while overview.numberOfTransactions was 0.
   const transactionsCount = useMemo(
-    () => overview.numberOfTransactions ?? filteredTransactions.length,
+    () => overview.numberOfTransactions || filteredTransactions.length,
     [overview.numberOfTransactions, filteredTransactions],
   );
 
