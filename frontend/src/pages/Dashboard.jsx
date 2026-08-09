@@ -129,19 +129,6 @@ const renderPieLabelLine = (props) => {
   );
 };
 
-// Dedicated palette for the Expense Distribution chart — reds and
-// oranges to match the app's existing expense theming (the Spent gauge
-// and expense category icons already use orange/red tones).
-const EXPENSE_PIE_COLORS = [
-  "#ef4444", // red-500
-  "#f97316", // orange-500
-  "#dc2626", // red-600
-  "#fb923c", // orange-400
-  "#b91c1c", // red-700
-  "#fdba74", // orange-300
-  "#f87171", // red-400
-];
-
 const Dashboard = () => {
   //get refreshTransactions from the outlet context
   const {
@@ -653,7 +640,7 @@ const Dashboard = () => {
                 {financialOverviewData.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
-                    fill={EXPENSE_PIE_COLORS[index % EXPENSE_PIE_COLORS.length]}
+                    fill={COLORS[index % COLORS.length]}
                     stroke="#fff"
                     strokeWidth={2}
                   />
