@@ -11,7 +11,9 @@ const Navbar = ({ user: propUser, onLogout }) => {
   const menuRef = useRef();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const user = propUser || {
+  const [fetchedUser, setFetchedUser] = useState(null);
+
+  const user = propUser || fetchedUser || {
     name: "",
     email: "",
   };
@@ -27,7 +29,7 @@ const Navbar = ({ user: propUser, onLogout }) => {
           headers: { Authorization: `Bearer ${token}` },
         });
         const userData = response.data.user || response.data;
-        setUser(userData);
+        setFetchedUser(userData);
       } catch (error) {
         console.error("Failed to load profile", error);
       }
@@ -43,6 +45,9 @@ const Navbar = ({ user: propUser, onLogout }) => {
   const handleLogout = () => {
     setMenuOpen(false);
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
     onLogout?.();
     navigate("/login");
   };
