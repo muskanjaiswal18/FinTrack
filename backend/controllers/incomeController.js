@@ -15,10 +15,17 @@ export async function addIncome(req, res) {
             });
         }
 
+        if (isNaN(Number(amount)) || Number(amount) <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Amount must be a positive number"
+            });
+        }
+
         const newIncome = new incomeModel({
             userId,
             description,
-            amount,
+            amount: Number(amount),
             category,
             date: new Date(date)
         });
@@ -59,13 +66,27 @@ export async function getAllIncome(req, res) {
 export async function updateIncome(req, res) {
     const { id } = req.params;
     const userId = req.user._id;
-    const { description, amount } = req.body;
+    const { description, amount, category, date } = req.body;
 
     try {
+        const updateFields = {};
+        if (description !== undefined) updateFields.description = description;
+        if (category !== undefined) updateFields.category = category;
+        if (date !== undefined) updateFields.date = new Date(date);
+        if (amount !== undefined) {
+            if (isNaN(Number(amount)) || Number(amount) <= 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Amount must be a positive number"
+                });
+            }
+            updateFields.amount = Number(amount);
+        }
+
         const updatedIncome = await incomeModel.findOneAndUpdate(
             { _id: id, userId },
-            { description, amount },
-            { new: true }
+            updateFields,
+            { new: true, runValidators: true }
         );
 
         if (!updatedIncome) {
@@ -92,8 +113,11 @@ export async function updateIncome(req, res) {
 
 // to delete an income
 export async function deleteIncome(req, res) {
+    const userId = req.user._id;
     try {
-        const income = await incomeModel.findByIdAndDelete({ _id: req.params.id });
+        // Scoped to the logged-in user so no one can delete another
+        // user's data just by guessing/knowing an id.
+        const income = await incomeModel.findOneAndDelete({ _id: req.params.id, userId });
         if (!income) {
             return res.status(404).json({
                 success: false,
@@ -130,8 +154,13 @@ export async function downloadIncomeExcel(req, res) {
         const worksheet = XLSX.utils.json_to_sheet(plainData);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "incomeModel");
-        XLSX.writeFile(workbook, "income_details.xlsx");
-        res.download("income_details.xlsx");
+
+        // Write to an in-memory buffer per-request instead of a shared
+        // file on disk (see same note in expenseController.js).
+        const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+        res.setHeader("Content-Disposition", "attachment; filename=income_details.xlsx");
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        res.send(buffer);
     }
 
     catch (error) {

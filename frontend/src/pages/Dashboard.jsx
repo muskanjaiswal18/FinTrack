@@ -129,6 +129,17 @@ const renderPieLabelLine = (props) => {
   );
 };
 
+// toISOString() converts to UTC first, so for any timezone ahead of UTC
+// (e.g. IST, UTC+5:30) using it to default a date field could silently
+// return YESTERDAY's date for several hours after local midnight — which
+// then makes a transaction added "today" fall outside today's/this
+// week's filtered view. This returns the date on the user's own clock.
+const getLocalDateString = () => {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
 const Dashboard = () => {
   //get refreshTransactions from the outlet context
   const {
@@ -152,7 +163,7 @@ const Dashboard = () => {
   const overviewRequestId = useRef(0);
 
   const [newTransaction, setNewTransaction] = useState({
-    date: new Date().toISOString().split("T")[0],
+    date: getLocalDateString(),
     description: "",
     amount: "",
     type: "expense", //or income
@@ -448,7 +459,7 @@ const Dashboard = () => {
       await fetchDashboardOverview();
 
       setNewTransaction({
-        date: new Date().toISOString().split("T")[0],
+        date: getLocalDateString(),
         description: "",
         amount: "",
         type: "expense",

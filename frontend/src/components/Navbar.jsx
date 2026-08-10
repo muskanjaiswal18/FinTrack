@@ -10,7 +10,9 @@ const Navbar = ({ user: propUser, onLogout }) => {
   const navigate = useNavigate();
   const menuRef = useRef();
   const [menuOpen, setMenuOpen] = useState(false);
-
+  // Fallback state for when no `user` prop is passed in. The original
+  // code called a non-existent `setUser` here, which throws a
+  // ReferenceError and crashes the navbar any time propUser is missing.
   const [fetchedUser, setFetchedUser] = useState(null);
 
   const user = propUser || fetchedUser || {
@@ -45,9 +47,6 @@ const Navbar = ({ user: propUser, onLogout }) => {
   const handleLogout = () => {
     setMenuOpen(false);
     localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("user");
     onLogout?.();
     navigate("/login");
   };

@@ -1,15 +1,17 @@
 const getDateRange = (range) => {
     const now = new Date();
+    const end = new Date(now);
     let start;
 
     switch (range) {
         case "daily":
             start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             break;
-        case "weekly":
+        case "weekly": {
             const firstDayOfWeek = now.getDate() - now.getDay();
-            start = new Date(now.setDate(firstDayOfWeek));
+            start = new Date(now.getFullYear(), now.getMonth(), firstDayOfWeek);
             break;
+        }
         case "monthly":
             start = new Date(now.getFullYear(), now.getMonth(), 1);
             break;
@@ -20,7 +22,7 @@ const getDateRange = (range) => {
             start = new Date(now.getFullYear(), now.getMonth(), 1); // default monthly
     }
 
-    return { start, end: new Date() };
+    return { start, end };
 };
 
-export default getDateRange
+export default getDateRange;

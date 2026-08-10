@@ -14,10 +14,18 @@ export async function addExpense(req, res) {
                 message: "All fields are required"
             });
         }
+
+        if (isNaN(Number(amount)) || Number(amount) <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Amount must be a positive number"
+            });
+        }
+
         const newExpense = new expenseModel({
             userId,
             description,
-            amount,
+            amount: Number(amount),
             category,
             date: new Date(date)
         });
@@ -59,13 +67,27 @@ export async function getAllExpense(req, res) {
 export async function updateExpense(req, res) {
     const { id } = req.params;
     const userId = req.user._id;
-    const { description, amount } = req.body;
+    const { description, amount, category, date } = req.body;
 
     try {
+        const updateFields = {};
+        if (description !== undefined) updateFields.description = description;
+        if (category !== undefined) updateFields.category = category;
+        if (date !== undefined) updateFields.date = new Date(date);
+        if (amount !== undefined) {
+            if (isNaN(Number(amount)) || Number(amount) <= 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Amount must be a positive number"
+                });
+            }
+            updateFields.amount = Number(amount);
+        }
+
         const updatedExpense = await expenseModel.findOneAndUpdate(
             { _id: id, userId },
-            { description, amount },
-            { new: true }
+            updateFields,
+            { new: true, runValidators: true }
         );
 
         if (!updatedExpense) {
@@ -92,8 +114,11 @@ export async function updateExpense(req, res) {
 
 // delete an expense
 export async function deleteExpense(req, res) {
+    const userId = req.user._id;
     try {
-        const expense = await expenseModel.findByIdAndDelete({ _id: req.params.id });
+        // Scoped to the logged-in user so no one can delete another
+        // user's data just by guessing/knowing an id.
+        const expense = await expenseModel.findOneAndDelete({ _id: req.params.id, userId });
         if (!expense) {
             return res.status(404).json({
                 success: false,
@@ -130,8 +155,15 @@ export async function downloadExpenseExcel(req, res) {
         const worksheet = XLSX.utils.json_to_sheet(plainData);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "expenseModel");
-        XLSX.writeFile(workbook, "expense_details.xlsx");
-        res.download("expense_details.xlsx");
+
+        // Write to an in-memory buffer per-request instead of a shared
+        // file on disk — the old version wrote to the same filename for
+        // every user/request, so concurrent downloads could overwrite
+        // or serve each other's data.
+        const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+        res.setHeader("Content-Disposition", "attachment; filename=expense_details.xlsx");
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        res.send(buffer);
     }
 
     catch (error) {
