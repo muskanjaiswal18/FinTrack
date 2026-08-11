@@ -528,7 +528,17 @@ const Income = () => {
             </p>
           </div>
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => {
+              // Re-stamp the date to the actual current day every time
+              // the modal opens. useState's initial value only runs once
+              // at component mount, so without this, a tab left open
+              // across midnight would keep defaulting to the stale date.
+              setNewTransaction((prev) => ({
+                ...prev,
+                date: getLocalDateString(),
+              }));
+              setShowModal(true);
+            }}
             className={styles.addButton}
             disabled={loading}
           >
@@ -669,7 +679,13 @@ const Income = () => {
                   : `No ${filter} transactions found`}
               </p>
               <button
-                onClick={() => setShowModal(true)}
+                onClick={() => {
+                  setNewTransaction((prev) => ({
+                    ...prev,
+                    date: getLocalDateString(),
+                  }));
+                  setShowModal(true);
+                }}
                 className={styles.emptyStateButton}
               >
                 <Plus size={16} className="md:size-5" /> Add Income
