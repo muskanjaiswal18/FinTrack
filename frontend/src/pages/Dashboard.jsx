@@ -248,6 +248,8 @@ const Dashboard = () => {
       : currentTimeFrameData.savings;
 
   //expense change percentage
+  const hasPreviousPeriodData = prevFilteredTransactions.length > 0;
+
   const expenseChange = useMemo(() => {
     const prev = prevTimeFrameData.expenses;
     const curr = displayExpenses;
@@ -553,22 +555,28 @@ const Dashboard = () => {
           label={`${timeFrameRange.label} Expenses`}
           value={`$${Math.round(displayExpenses).toLocaleString()}`}
           additionalContent={
-            <div
-              className={`mt-2 text-xs flex items-center gap-1 ${
-                expenseChange >= 0 ? trendStyles.positive : trendStyles.negative
-              }`}
-            >
-              {expenseChange >= 0 ? (
-                <TrendingUp className=" w-4 h-4" />
-              ) : (
-                <TrendingDown className=" w-4 h-4" />
-              )}
-              <span>
-                {Math.abs(expenseChange)}%{" "}
-                {expenseChange >= 0 ? "increase" : "decrease"} from{" "}
-                {prevTimeFrameRange.label}
-              </span>
-            </div>
+            hasPreviousPeriodData ? (
+              <div
+                className={`mt-2 text-xs flex items-center gap-1 ${
+                  expenseChange >= 0 ? trendStyles.positive : trendStyles.negative
+                }`}
+              >
+                {expenseChange >= 0 ? (
+                  <TrendingUp className=" w-4 h-4" />
+                ) : (
+                  <TrendingDown className=" w-4 h-4" />
+                )}
+                <span>
+                  {Math.abs(expenseChange)}%{" "}
+                  {expenseChange >= 0 ? "increase" : "decrease"} from{" "}
+                  {prevTimeFrameRange.label}
+                </span>
+              </div>
+            ) : (
+              <div className="mt-2 text-xs flex items-center gap-1 text-gray-400">
+                <span>No data from {prevTimeFrameRange.label.toLowerCase()} yet</span>
+              </div>
+            )
           }
         />
 

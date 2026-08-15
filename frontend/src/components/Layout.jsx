@@ -235,35 +235,50 @@ const Layout = ({ onLogout, user }) => {
       return date >= last60DaysAgo && date < thirtyDaysAgo;
     });
 
-    const previous30DaysExpenses = previous30DaysTransactions
-      .filter((t) => t.type === "expense")
-      .reduce((sum, t) => sum + Number(t.amount), 0);
+    const previous30DaysExpenseTxns = previous30DaysTransactions.filter(
+      (t) => t.type === "expense",
+    );
+    const previous30DaysIncomeTxns = previous30DaysTransactions.filter(
+      (t) => t.type === "income",
+    );
 
-    const previous30DaysIncome = previous30DaysTransactions
-      .filter((t) => t.type === "income")
-      .reduce((sum, t) => sum + Number(t.amount), 0);
+    const previous30DaysExpenses = previous30DaysExpenseTxns.reduce(
+      (sum, t) => sum + Number(t.amount),
+      0,
+    );
 
-    const expenseChange =
-      previous30DaysExpenses > 0
-        ? Math.round(
-            ((last30DaysExpenses - previous30DaysExpenses) /
-              previous30DaysExpenses) *
-              100,
-          )
-        : 0;
+    const previous30DaysIncome = previous30DaysIncomeTxns.reduce(
+      (sum, t) => sum + Number(t.amount),
+      0,
+    );
+
+    // A brand-new account (or one where nothing was logged last period)
+    // has no prior data to compare against at all — that's different
+    // from a real 0% change, and showing "0%"/"+12.5%" in that case
+    // implies a comparison happened when it didn't. Track whether any
+    // prior-period transactions exist so the UI can say "New" instead.
+    const hasPreviousExpenseData = previous30DaysExpenseTxns.length > 0;
+    const hasPreviousIncomeData = previous30DaysIncomeTxns.length > 0;
+
+    const expenseChange = hasPreviousExpenseData
+      ? Math.round(
+          ((last30DaysExpenses - previous30DaysExpenses) /
+            previous30DaysExpenses) *
+            100,
+        )
+      : 0;
 
     // Was previously a hardcoded "+12.5%" regardless of actual data —
     // computed the same way expenseChange already was, so a brand-new
-    // user with no prior-period income correctly sees 0%, not a fake
+    // user with no prior-period income correctly sees "New", not a fake
     // positive number.
-    const incomeChange =
-      previous30DaysIncome > 0
-        ? Math.round(
-            ((last30DaysIncome - previous30DaysIncome) /
-              previous30DaysIncome) *
-              100,
-          )
-        : 0;
+    const incomeChange = hasPreviousIncomeData
+      ? Math.round(
+          ((last30DaysIncome - previous30DaysIncome) /
+            previous30DaysIncome) *
+            100,
+        )
+      : 0;
 
     return {
       totalTransactions: transactions.length,
@@ -277,6 +292,8 @@ const Layout = ({ onLogout, user }) => {
       savingsRate,
       expenseChange,
       incomeChange,
+      hasPreviousExpenseData,
+      hasPreviousIncomeData,
     };
   }, [transactions]);
 
@@ -381,15 +398,23 @@ const Layout = ({ onLogout, user }) => {
               </div>
             </div>
             <p className={styles.statCards.cardFooter}>
-              <span
-                className={`${styles.colors.incomeChange(
-                  stats.incomeChange,
-                )} font-medium`}
-              >
-                {stats.incomeChange > 0 ? "+" : ""}
-                {stats.incomeChange}%
-              </span>{" "}
-              from last month
+              {stats.hasPreviousIncomeData ? (
+                <>
+                  <span
+                    className={`${styles.colors.incomeChange(
+                      stats.incomeChange,
+                    )} font-medium`}
+                  >
+                    {stats.incomeChange > 0 ? "+" : ""}
+                    {stats.incomeChange}%
+                  </span>{" "}
+                  from last month
+                </>
+              ) : (
+                <span className="text-gray-400 font-medium">
+                  No data from last month yet
+                </span>
+              )}
             </p>
           </div>
 
@@ -409,15 +434,23 @@ const Layout = ({ onLogout, user }) => {
               </div>
             </div>
             <p className={styles.statCards.cardFooter}>
-              <span
-                className={`${styles.colors.expenseChange(
-                  stats.expenseChange,
-                )} font-medium`}
-              >
-                {stats.expenseChange > 0 ? "+" : ""}
-                {stats.expenseChange}%
-              </span>{" "}
-              from last month
+              {stats.hasPreviousExpenseData ? (
+                <>
+                  <span
+                    className={`${styles.colors.expenseChange(
+                      stats.expenseChange,
+                    )} font-medium`}
+                  >
+                    {stats.expenseChange > 0 ? "+" : ""}
+                    {stats.expenseChange}%
+                  </span>{" "}
+                  from last month
+                </>
+              ) : (
+                <span className="text-gray-400 font-medium">
+                  No data from last month yet
+                </span>
+              )}
             </p>
           </div>
 
