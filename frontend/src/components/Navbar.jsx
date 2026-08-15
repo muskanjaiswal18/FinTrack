@@ -24,7 +24,7 @@ const Navbar = ({ user: propUser, onLogout }) => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("token") || sessionStorage.getItem("token");
         if (!token) return;
 
         const response = await axios.get(`${BASE_URL}/user/me`, {
@@ -47,6 +47,7 @@ const Navbar = ({ user: propUser, onLogout }) => {
   const handleLogout = () => {
     setMenuOpen(false);
     localStorage.removeItem("token");
+    sessionStorage.removeItem("token");
     onLogout?.();
     navigate("/login");
   };

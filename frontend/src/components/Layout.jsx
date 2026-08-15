@@ -239,11 +239,28 @@ const Layout = ({ onLogout, user }) => {
       .filter((t) => t.type === "expense")
       .reduce((sum, t) => sum + Number(t.amount), 0);
 
+    const previous30DaysIncome = previous30DaysTransactions
+      .filter((t) => t.type === "income")
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
     const expenseChange =
       previous30DaysExpenses > 0
         ? Math.round(
             ((last30DaysExpenses - previous30DaysExpenses) /
               previous30DaysExpenses) *
+              100,
+          )
+        : 0;
+
+    // Was previously a hardcoded "+12.5%" regardless of actual data —
+    // computed the same way expenseChange already was, so a brand-new
+    // user with no prior-period income correctly sees 0%, not a fake
+    // positive number.
+    const incomeChange =
+      previous30DaysIncome > 0
+        ? Math.round(
+            ((last30DaysIncome - previous30DaysIncome) /
+              previous30DaysIncome) *
               100,
           )
         : 0;
@@ -259,6 +276,7 @@ const Layout = ({ onLogout, user }) => {
       last30DaysCount: last30DaysTransactions.length,
       savingsRate,
       expenseChange,
+      incomeChange,
     };
   }, [transactions]);
 
@@ -363,8 +381,15 @@ const Layout = ({ onLogout, user }) => {
               </div>
             </div>
             <p className={styles.statCards.cardFooter}>
-              <span className=" text-green-600 font-medium">+12.5%</span> from
-              last month
+              <span
+                className={`${styles.colors.incomeChange(
+                  stats.incomeChange,
+                )} font-medium`}
+              >
+                {stats.incomeChange > 0 ? "+" : ""}
+                {stats.incomeChange}%
+              </span>{" "}
+              from last month
             </p>
           </div>
 

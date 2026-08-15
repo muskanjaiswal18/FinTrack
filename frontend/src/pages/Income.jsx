@@ -214,7 +214,7 @@ const Income = () => {
 
   //to get the token from localstorage
   const getAuthHeaders = useCallback(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
     return token ? { Authorization: `Bearer ${token}` } : {};
   }, []);
 
