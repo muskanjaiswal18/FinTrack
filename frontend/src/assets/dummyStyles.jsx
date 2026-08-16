@@ -1,5 +1,5 @@
 import React, { Activity, useEffect, useMemo, useState } from "react";
-import { styles } from "../assets/dummyStyles";
+import { styles } from "./dummyStyles";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import {
