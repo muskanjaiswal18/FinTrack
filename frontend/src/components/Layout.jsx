@@ -38,28 +38,6 @@ const CATEGORY_ICONS = {
   Savings: <PiggyBank className="w-4 h-4" />,
 };
 
-// to filter
-const filterTransactions = (transactions, frame) => {
-  const now = new Date();
-  const today = new Date(now).setHours(0, 0, 0, 0);
-
-  switch (frame) {
-    case "daily":
-      return transactions.filter((t) => new Date(t.date) >= today);
-    case "weekly": {
-      const startOfWeek = new Date(today);
-      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
-      return transactions.filter((t) => new Date(t.date) >= startOfWeek);
-    }
-    case "monthly":
-      return transactions.filter(
-        (t) => new Date(t.date).getMonth() === now.getMonth(),
-      );
-    default:
-      return transactions;
-  }
-};
-
 const safeArrayFromResponse = (res) => {
   const body = res?.data;
   if (!body) return [];
@@ -189,11 +167,6 @@ const Layout = ({ onLogout, user }) => {
     fetchTransactions();
   }, []);
 
-  const filteredTransactions = useMemo(
-    () => filterTransactions(transactions, timeFrame),
-    [transactions, timeFrame],
-  ); //filter with timeframe
-
   //get stats data according to time
   const stats = useMemo(() => {
     const now = new Date();
@@ -256,7 +229,7 @@ const Layout = ({ onLogout, user }) => {
     // has no prior data to compare against at all — that's different
     // from a real 0% change, and showing "0%"/"+12.5%" in that case
     // implies a comparison happened when it didn't. Track whether any
-    // prior-period transactions exist so the UI can say "New" instead.
+    // prior-period transactions exist so the UI can say "No data" instead.
     const hasPreviousExpenseData = previous30DaysExpenseTxns.length > 0;
     const hasPreviousIncomeData = previous30DaysIncomeTxns.length > 0;
 
@@ -268,10 +241,6 @@ const Layout = ({ onLogout, user }) => {
         )
       : 0;
 
-    // Was previously a hardcoded "+12.5%" regardless of actual data —
-    // computed the same way expenseChange already was, so a brand-new
-    // user with no prior-period income correctly sees "New", not a fake
-    // positive number.
     const incomeChange = hasPreviousIncomeData
       ? Math.round(
           ((last30DaysIncome - previous30DaysIncome) /
@@ -308,7 +277,7 @@ const Layout = ({ onLogout, user }) => {
   );
 
   const outletContext = {
-    transactions: filteredTransactions,
+    transactions,
     addTransaction,
     editTransaction,
     deleteTransaction,
