@@ -73,8 +73,7 @@ Thumbs.db
 .idea/
 *.suo
 *.ntvs*
-*.njsproj
-*.sln
+*.njsproj .*.sln
 *.sw?
 
 # ==============================
